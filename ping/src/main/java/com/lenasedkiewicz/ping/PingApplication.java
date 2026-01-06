@@ -20,7 +20,7 @@ public class PingApplication {
     // tag::ping-endpoint[]
     @GetMapping
     public Mono<String> index() {
-        return webClient.get().uri("http://gs-spring-boot-k8s/helloworld")
+        return webClient.get().uri("http://helloworld:5100/helloworld")
                 .retrieve()
                 .toEntity(String.class)
                 .map(entity -> {
