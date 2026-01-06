@@ -24,8 +24,8 @@ kubernetes-first-contact/
 
 ## Prerequisites
 
-- Java 17 or higher
-- Maven 3.6+
+- Java 25
+- Maven 3.6+ (Maven 4.0 works fine)
 - Docker Desktop
 - kubectl (for Kubernetes deployment)
 - Kubernetes cluster (Docker Desktop includes one)
