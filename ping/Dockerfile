@@ -11,6 +11,6 @@ WORKDIR /app
 
 COPY --from=build /app/target/ping-0.0.1-SNAPSHOT.jar ./ping.jar
 
-EXPOSE 5100
+EXPOSE 8080
 
 CMD ["java", "-jar", "ping.jar"]
