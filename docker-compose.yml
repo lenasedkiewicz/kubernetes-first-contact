@@ -1,0 +1,22 @@
+services:
+  helloworld:
+    build:
+      context: ./helloworld
+      dockerfile: Dockerfile
+    ports:
+      - "5100:5100"
+    networks:
+      - app-network
+
+  ping:
+    build:
+      context: ./ping
+      dockerfile: Dockerfile
+    ports:
+     - "8080:8080"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
