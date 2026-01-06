@@ -178,14 +178,25 @@ kubectl get endpoints
 
 ### Cleanup
 
+**IMPORTANT: Stop Kubernetes resources when done (especially before shutting down your computer)**
+
 ```bash
-# Delete all resources
+# Delete all resources using manifest files (Recommended)
 kubectl delete -f k8s/
 
 # Or delete individually
 kubectl delete deployment helloworld ping
 kubectl delete service helloworld ping
+
+# Verify everything is deleted
+kubectl get all
 ```
+
+**If you want to completely stop Kubernetes:**
+1. Open Docker Desktop
+2. Go to Settings → Kubernetes
+3. Uncheck "Enable Kubernetes"
+4. Click "Apply & Restart"
 
 ## Troubleshooting
 
