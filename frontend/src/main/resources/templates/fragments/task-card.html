@@ -5,7 +5,7 @@
     <div class="task-header">
         <span class="task-name" th:text="${task.name}">Task Name</span>
         <span class="priority-badge"
-              th:classappend="${task.priority.name() == 'HIGH' ? 'priority-high' : (task.priority.name() == 'MEDIUM' ? 'priority-medium' : 'priority-low')}"
+              th:classappend="${task.priority?.toString() == 'HIGH' ? 'priority-high' : (task.priority?.toString() == 'MEDIUM' ? 'priority-medium' : 'priority-low')}"
               th:text="${task.priority}">HIGH</span>
     </div>
     <div class="task-duration">
@@ -13,10 +13,10 @@
     </div>
     <div class="task-actions">
         <div class="move-buttons">
-            <form th:if="${task.status.name() != 'TO_DO'}" th:action="@{/tasks/{id}/move-left(id=${task.id})}" method="post" style="display:inline;">
+            <form th:if="${task.status?.toString() != 'TO_DO'}" th:action="@{/tasks/{id}/move-left(id=${task.id})}" method="post" style="display:inline;">
                 <button type="submit" class="btn btn-move" title="Move Left">&larr;</button>
             </form>
-            <form th:if="${task.status.name() != 'DONE'}" th:action="@{/tasks/{id}/move-right(id=${task.id})}" method="post" style="display:inline;">
+            <form th:if="${task.status?.toString() != 'DONE'}" th:action="@{/tasks/{id}/move-right(id=${task.id})}" method="post" style="display:inline;">
                 <button type="submit" class="btn btn-move" title="Move Right">&rarr;</button>
             </form>
         </div>

@@ -13,50 +13,111 @@
             <button class="btn btn-primary" onclick="openModal()">+ Add New Task</button>
         </header>
 
-        <!-- Flash Messages -->
         <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
         <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
 
         <div class="kanban-board">
-            <!-- TO DO Column -->
             <div class="kanban-column">
                 <div class="column-header todo-header">
                     <h2>TO DO</h2>
                     <span class="task-count" th:text="${#lists.size(todoTasks)}">0</span>
                 </div>
                 <div class="column-content">
-                    <div th:each="task : ${todoTasks}" th:replace="~{fragments/task-card :: task-card(${task})}"></div>
+                    <th:block th:each="task : ${todoTasks}">
+                        <div class="task-card">
+                            <div class="task-header">
+                                <span class="task-name" th:text="${task.name}">Task</span>
+                                <span class="priority-badge" th:classappend="'priority-' + ${#strings.toLowerCase(task.priority)}" th:text="${task.priority}">HIGH</span>
+                            </div>
+                            <div class="task-duration" th:text="${task.durationMinutes} + ' min'">30 min</div>
+                            <div class="task-actions">
+                                <div class="move-buttons">
+                                    <form th:action="@{/tasks/{id}/move-right(id=${task.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-move">&rarr;</button>
+                                    </form>
+                                </div>
+                                <div class="crud-buttons">
+                                    <a th:href="@{/tasks/{id}/edit(id=${task.id})}" class="btn btn-edit">Edit</a>
+                                    <form th:action="@{/tasks/{id}/delete(id=${task.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-delete">Del</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
                     <div th:if="${#lists.isEmpty(todoTasks)}" class="empty-column">No tasks</div>
                 </div>
             </div>
 
-            <!-- IN PROGRESS Column -->
             <div class="kanban-column">
                 <div class="column-header inprogress-header">
                     <h2>IN PROGRESS</h2>
                     <span class="task-count" th:text="${#lists.size(inProgressTasks)}">0</span>
                 </div>
                 <div class="column-content">
-                    <div th:each="task : ${inProgressTasks}" th:replace="~{fragments/task-card :: task-card(${task})}"></div>
+                    <th:block th:each="task : ${inProgressTasks}">
+                        <div class="task-card">
+                            <div class="task-header">
+                                <span class="task-name" th:text="${task.name}">Task</span>
+                                <span class="priority-badge" th:classappend="'priority-' + ${#strings.toLowerCase(task.priority)}" th:text="${task.priority}">HIGH</span>
+                            </div>
+                            <div class="task-duration" th:text="${task.durationMinutes} + ' min'">30 min</div>
+                            <div class="task-actions">
+                                <div class="move-buttons">
+                                    <form th:action="@{/tasks/{id}/move-left(id=${task.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-move">&larr;</button>
+                                    </form>
+                                    <form th:action="@{/tasks/{id}/move-right(id=${task.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-move">&rarr;</button>
+                                    </form>
+                                </div>
+                                <div class="crud-buttons">
+                                    <a th:href="@{/tasks/{id}/edit(id=${task.id})}" class="btn btn-edit">Edit</a>
+                                    <form th:action="@{/tasks/{id}/delete(id=${task.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-delete">Del</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
                     <div th:if="${#lists.isEmpty(inProgressTasks)}" class="empty-column">No tasks</div>
                 </div>
             </div>
 
-            <!-- DONE Column -->
             <div class="kanban-column">
                 <div class="column-header done-header">
                     <h2>DONE</h2>
                     <span class="task-count" th:text="${#lists.size(doneTasks)}">0</span>
                 </div>
                 <div class="column-content">
-                    <div th:each="task : ${doneTasks}" th:replace="~{fragments/task-card :: task-card(${task})}"></div>
+                    <th:block th:each="task : ${doneTasks}">
+                        <div class="task-card">
+                            <div class="task-header">
+                                <span class="task-name" th:text="${task.name}">Task</span>
+                                <span class="priority-badge" th:classappend="'priority-' + ${#strings.toLowerCase(task.priority)}" th:text="${task.priority}">HIGH</span>
+                            </div>
+                            <div class="task-duration" th:text="${task.durationMinutes} + ' min'">30 min</div>
+                            <div class="task-actions">
+                                <div class="move-buttons">
+                                    <form th:action="@{/tasks/{id}/move-left(id=${task.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-move">&larr;</button>
+                                    </form>
+                                </div>
+                                <div class="crud-buttons">
+                                    <a th:href="@{/tasks/{id}/edit(id=${task.id})}" class="btn btn-edit">Edit</a>
+                                    <form th:action="@{/tasks/{id}/delete(id=${task.id})}" method="post" style="display:inline;">
+                                        <button type="submit" class="btn btn-delete">Del</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </th:block>
                     <div th:if="${#lists.isEmpty(doneTasks)}" class="empty-column">No tasks</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal for Create/Edit Task -->
     <div id="taskModal" class="modal" th:classappend="${isEdit} ? 'show' : ''">
         <div class="modal-content">
             <div class="modal-header">
@@ -66,28 +127,32 @@
             <form th:action="${isEdit} ? @{/tasks/{id}(id=${taskForm.id})} : @{/tasks}" method="post">
                 <div class="form-group">
                     <label for="name">Task Name</label>
-                    <input type="text" id="name" name="name" th:value="${taskForm.name}" required maxlength="255" placeholder="Enter task name">
+                    <input type="text" id="name" name="name" th:value="${taskForm.name}" required maxlength="255">
                 </div>
                 <div class="form-group">
                     <label for="durationMinutes">Duration (minutes)</label>
-                    <input type="number" id="durationMinutes" name="durationMinutes" th:value="${taskForm.durationMinutes}" required min="1" placeholder="Enter duration">
+                    <input type="number" id="durationMinutes" name="durationMinutes" th:value="${taskForm.durationMinutes}" required min="1">
                 </div>
                 <div class="form-group">
                     <label for="priority">Priority</label>
                     <select id="priority" name="priority" required>
                         <option value="">Select priority</option>
-                        <option th:each="p : ${priorities}" th:value="${p}" th:text="${p}" th:selected="${taskForm.priority == p}"></option>
+                        <option value="LOW" th:selected="${taskForm.priority != null and taskForm.priority.toString() == 'LOW'}">LOW</option>
+                        <option value="MEDIUM" th:selected="${taskForm.priority != null and taskForm.priority.toString() == 'MEDIUM'}">MEDIUM</option>
+                        <option value="HIGH" th:selected="${taskForm.priority != null and taskForm.priority.toString() == 'HIGH'}">HIGH</option>
                     </select>
                 </div>
                 <div th:if="${isEdit}" class="form-group">
                     <label for="status">Status</label>
                     <select id="status" name="status" required>
-                        <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.name().replace('_', ' ')}" th:selected="${taskForm.status == s}"></option>
+                        <option value="TO_DO" th:selected="${taskForm.status != null and taskForm.status.toString() == 'TO_DO'}">TO DO</option>
+                        <option value="IN_PROGRESS" th:selected="${taskForm.status != null and taskForm.status.toString() == 'IN_PROGRESS'}">IN PROGRESS</option>
+                        <option value="DONE" th:selected="${taskForm.status != null and taskForm.status.toString() == 'DONE'}">DONE</option>
                     </select>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" th:text="${isEdit} ? 'Update Task' : 'Create Task'">Create Task</button>
+                    <button type="submit" class="btn btn-primary" th:text="${isEdit} ? 'Update' : 'Create'">Create</button>
                 </div>
             </form>
         </div>
@@ -97,18 +162,13 @@
         function openModal() {
             document.getElementById('taskModal').classList.add('show');
         }
-
         function closeModal() {
             document.getElementById('taskModal').classList.remove('show');
             window.location.href = '/';
         }
-
-        // Close modal when clicking outside
         window.onclick = function(event) {
             var modal = document.getElementById('taskModal');
-            if (event.target == modal) {
-                closeModal();
-            }
+            if (event.target == modal) closeModal();
         }
     </script>
 </body>
