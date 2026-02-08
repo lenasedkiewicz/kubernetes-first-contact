@@ -1,25 +1,54 @@
 # Kubernetes First Contact
 
-A simple microservices demo application consisting of two Spring Boot services that communicate with each other, deployable using Docker Compose or Kubernetes.
+A Task Management application with a Kanban board UI, demonstrating microservices architecture deployable using Docker Compose or Kubernetes.
 
 ## Project Structure
 
 ```
 kubernetes-first-contact/
-├── helloworld/          # Service that returns "Hello world!" on port 5100
+├── taskboard-api/       # REST API for task management (port 5100)
 │   ├── src/
 │   ├── Dockerfile
 │   └── pom.xml
-├── ping/                # Service that calls helloworld service on port 8080
+├── frontend/            # Thymeleaf Kanban board UI (port 8081)
+│   ├── src/
+│   ├── Dockerfile
+│   └── pom.xml
+├── ping/                # Utility service (port 8080)
 │   ├── src/
 │   ├── Dockerfile
 │   └── pom.xml
 ├── k8s/                 # Kubernetes manifests
-│   ├── helloworld-deployment.yaml
-│   ├── helloworld-service.yaml
+│   ├── taskboard-api-deployment.yaml
+│   ├── taskboard-api-service.yaml
+│   ├── taskboard-pvc.yaml
+│   ├── frontend-deployment.yaml
+│   ├── frontend-service.yaml
 │   ├── ping-deployment.yaml
 │   └── ping-service.yaml
+├── documentation/       # Project documentation
+│   ├── Plans/
+│   └── Fixes/
 └── docker-compose.yml   # Docker Compose configuration
+```
+
+## Architecture
+
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│     frontend        │  REST   │   taskboard-api     │
+│   (Thymeleaf UI)    │ ──────> │   (Spring Boot)     │
+│     Port: 8081      │         │     Port: 5100      │
+│                     │         │                     │
+│  - Kanban Board     │         │  - Task CRUD API    │
+│  - Task Forms       │         │  - H2 File DB       │
+└─────────────────────┘         └─────────────────────┘
+                                         │
+                                         v
+                                ┌─────────────────┐
+                                │  /data/taskboard│
+                                │   (H2 file DB)  │
+                                └─────────────────┘
 ```
 
 ## Prerequisites
@@ -35,11 +64,12 @@ kubernetes-first-contact/
 ### Option 1: Run with Docker Compose
 
 ```bash
-# Build and start both services
+# Build and start all services
 docker-compose up --build
 
-# Test the ping service (calls helloworld internally)
-curl http://localhost:8080
+# Access the application
+# Frontend (Kanban Board): http://localhost:8081
+# API: http://localhost:5100/api/tasks
 
 # Cleanup
 docker-compose down
@@ -47,22 +77,94 @@ docker-compose down
 
 ### Option 2: Run with Kubernetes
 
-See the [Kubernetes Deployment](#kubernetes-deployment) section below.
+```bash
+# Build Docker images
+docker build -t taskboard-api:latest ./taskboard-api
+docker build -t frontend:latest ./frontend
+
+# Deploy to Kubernetes
+kubectl apply -f k8s/
+
+# Access the application
+# Frontend: http://localhost:8081
+
+# Cleanup
+kubectl delete -f k8s/
+```
+
+## Services
+
+### taskboard-api (Port 5100)
+
+REST API for task management with H2 file-based persistence.
+
+**API Endpoints:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/tasks` | List all tasks |
+| GET | `/api/tasks/{id}` | Get task by ID |
+| POST | `/api/tasks` | Create task |
+| PUT | `/api/tasks/{id}` | Update task |
+| PATCH | `/api/tasks/{id}/status` | Update status only |
+| DELETE | `/api/tasks/{id}` | Delete task |
+
+**Task Model:**
+- `name` - Task name (required, max 255 chars)
+- `durationMinutes` - Estimated duration in minutes (required, min 1)
+- `priority` - LOW, MEDIUM, or HIGH
+- `status` - TO_DO, IN_PROGRESS, or DONE
+
+**Example API Usage:**
+```bash
+# Create a task
+curl -X POST http://localhost:5100/api/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Task","durationMinutes":30,"priority":"HIGH"}'
+
+# List all tasks
+curl http://localhost:5100/api/tasks
+
+# Move task to IN_PROGRESS
+curl -X PATCH http://localhost:5100/api/tasks/1/status \
+  -H "Content-Type: application/json" \
+  -d '{"status":"IN_PROGRESS"}'
+```
+
+### frontend (Port 8081)
+
+Thymeleaf-based Kanban board UI.
+
+**Features:**
+- 3-column Kanban board (TO DO, IN PROGRESS, DONE)
+- Create new tasks via modal form
+- Edit existing tasks
+- Move tasks between columns with arrow buttons
+- Delete tasks
+- Priority color coding (red=HIGH, yellow=MEDIUM, green=LOW)
+
+### ping (Port 8080)
+
+Utility service for testing connectivity.
 
 ## Building the Applications
 
-### Build helloworld service
+### Build all services
 
 ```bash
-cd helloworld
+# Build taskboard-api
+cd taskboard-api
 ./mvnw clean package
-docker build -t helloworld:latest .
+docker build -t taskboard-api:latest .
 cd ..
-```
 
-### Build ping service
+# Build frontend
+cd frontend
+./mvnw clean package
+docker build -t frontend:latest .
+cd ..
 
-```bash
+# Build ping
 cd ping
 ./mvnw clean package
 docker build -t ping:latest .
@@ -74,301 +176,113 @@ cd ..
 ### 1. Ensure Kubernetes is running
 
 ```bash
-# Check if kubectl is configured
 kubectl cluster-info
-
-# Check current context
 kubectl config current-context
-
-# List all nodes
 kubectl get nodes
 ```
 
-### 2. Deploy helloworld service
+### 2. Deploy all services
 
 ```bash
-# Apply helloworld deployment and service
-kubectl apply -f k8s/helloworld-deployment.yaml
-kubectl apply -f k8s/helloworld-service.yaml
+kubectl apply -f k8s/
 
 # Verify deployment
-kubectl get deployments
 kubectl get pods
 kubectl get services
+kubectl get pvc
 ```
 
-### 3. Deploy ping service
+### 3. Access the application
 
 ```bash
-# Apply ping deployment and service
-kubectl apply -f k8s/ping-deployment.yaml
-kubectl apply -f k8s/ping-service.yaml
+# Frontend is exposed via LoadBalancer
+# Open http://localhost:8081 in your browser
 
-# Verify deployment
-kubectl get deployments
-kubectl get pods
-kubectl get services
+# Or use port-forward for the API
+kubectl port-forward service/taskboard-api 5100:5100
 ```
 
-### 4. Test the application
-
-```bash
-# Get the ping service details
-kubectl get service ping
-
-# Port-forward to access ping service locally
-kubectl port-forward service/ping 8080:8080
-
-# In another terminal, test the service
-curl http://localhost:8080
-```
-
-Expected output: `Hello world!`
-
-## Useful Kubernetes Commands
+## Useful Commands
 
 ### Viewing Resources
 
 ```bash
-# List all resources in default namespace
 kubectl get all
-
-# Get detailed info about a pod
-kubectl describe pod <pod-name>
-
-# View pod logs
-kubectl logs <pod-name>
-
-# Follow logs in real-time
-kubectl logs -f <pod-name>
-
-# Get logs from a specific container in a pod
-kubectl logs <pod-name> -c <container-name>
+kubectl get pods
+kubectl logs deployment/frontend
+kubectl logs deployment/taskboard-api
 ```
 
 ### Managing Deployments
 
 ```bash
-# Restart a deployment (useful after rebuilding Docker image)
-kubectl rollout restart deployment helloworld
-kubectl rollout restart deployment ping
-
-# Check rollout status
-kubectl rollout status deployment helloworld
+# Restart after rebuilding images
+kubectl rollout restart deployment frontend
+kubectl rollout restart deployment taskboard-api
 
 # Scale a deployment
-kubectl scale deployment helloworld --replicas=3
-
-# Delete a deployment
-kubectl delete deployment helloworld
-```
-
-### Debugging
-
-```bash
-# Execute commands inside a pod
-kubectl exec -it <pod-name> -- /bin/sh
-
-# Test connectivity between pods
-kubectl exec -it <ping-pod-name> -- curl http://helloworld:5100/helloworld
-
-# Check service endpoints
-kubectl get endpoints
+kubectl scale deployment frontend --replicas=2
 ```
 
 ### Cleanup
 
-**IMPORTANT: Stop Kubernetes resources when done (especially before shutting down your computer)**
-
 ```bash
-# Delete all resources using manifest files (Recommended)
+# Delete all resources
 kubectl delete -f k8s/
 
-# Or delete individually
-kubectl delete deployment helloworld ping
-kubectl delete service helloworld ping
-
-# Verify everything is deleted
+# Verify cleanup
 kubectl get all
 ```
 
-**If you want to completely stop Kubernetes:**
-1. Open Docker Desktop
-2. Go to Settings → Kubernetes
-3. Uncheck "Enable Kubernetes"
-4. Click "Apply & Restart"
-
 ## Troubleshooting
 
-### Issue: kubectl commands not working or wrong cluster
+### Issue: Frontend shows 500 error
 
-**Solution: Switch to Docker Desktop Kubernetes context**
-
+**Check frontend logs:**
 ```bash
-# List all available contexts
-kubectl config get-contexts
-
-# Switch to Docker Desktop context
-kubectl config use-context docker-desktop
-
-# Verify the switch
-kubectl config current-context
-
-# Check if cluster is accessible
-kubectl cluster-info
+kubectl logs deployment/frontend
 ```
 
-### Issue: Connection refused error from ping to helloworld
+**Common cause:** Template parsing errors with Thymeleaf. See `documentation/Fixes/thymeleaf-enum-parsing-error.md`.
 
-**Symptoms:**
+### Issue: Frontend can't connect to API
+
+**Verify API is running:**
+```bash
+kubectl get pods
+kubectl logs deployment/taskboard-api
 ```
-java.net.ConnectException: finishConnect(..) failed with error(-111): Connection refused
+
+**Test API connectivity:**
+```bash
+kubectl port-forward service/taskboard-api 5100:5100
+curl http://localhost:5100/api/tasks
 ```
-
-**Solutions:**
-
-1. **Check if helloworld pod is running:**
-   ```bash
-   kubectl get pods
-   ```
-   Expected: helloworld pod should be in `Running` state
-
-2. **Check helloworld pod logs:**
-   ```bash
-   kubectl logs <helloworld-pod-name>
-   ```
-   Verify that the application started successfully and is listening on port 5100
-
-3. **Verify service endpoints:**
-   ```bash
-   kubectl get endpoints helloworld
-   ```
-   Should show the pod IP and port 5100
-
-4. **Test connectivity from ping pod:**
-   ```bash
-   kubectl exec -it <ping-pod-name> -- curl http://helloworld:5100/helloworld
-   ```
-
-5. **Rebuild and redeploy if needed:**
-   ```bash
-   cd helloworld
-   ./mvnw clean package
-   docker build -t helloworld:latest .
-   kubectl rollout restart deployment helloworld
-   cd ..
-   ```
 
 ### Issue: ImagePullBackOff error
 
-**Symptoms:**
-```
-ErrImagePull or ImagePullBackOff in pod status
-```
-
-**Solutions:**
-
-1. **Verify Docker images exist locally:**
-   ```bash
-   docker images | grep -E "helloworld|ping"
-   ```
-
-2. **Rebuild the Docker images:**
-   ```bash
-   # Build helloworld
-   cd helloworld
-   ./mvnw clean package
-   docker build -t helloworld:latest .
-   cd ..
-
-   # Build ping
-   cd ping
-   ./mvnw clean package
-   docker build -t ping:latest .
-   cd ..
-   ```
-
-3. **Ensure imagePullPolicy is set to Never** (already configured in the manifests)
-
-### Issue: Pods stuck in Pending state
-
-**Check cluster resources:**
+**Rebuild Docker images:**
 ```bash
-kubectl describe pod <pod-name>
-kubectl top nodes  # Requires metrics-server
+docker build -t taskboard-api:latest ./taskboard-api
+docker build -t frontend:latest ./frontend
+kubectl rollout restart deployment taskboard-api frontend
 ```
 
-### Issue: Port already in use (Docker Compose)
+### Issue: Data not persisting (Kubernetes)
 
-**Solution:**
+**Check PVC status:**
 ```bash
-# Find process using the port
-netstat -ano | findstr :8080
-netstat -ano | findstr :5100
-
-# Kill the process or use docker-compose down
-docker-compose down
+kubectl get pvc
+kubectl describe pvc taskboard-pvc
 ```
 
-### Issue: Native library warning from Netty
+## Documentation
 
-**Symptoms:**
-```
-WARNING: A restricted method in java.lang.System has been called
-WARNING: java.lang.System::loadLibrary has been called by io.netty...
-```
-
-**Note:** This is just a warning in newer Java versions and does not affect functionality. Can be safely ignored or suppressed with JVM args if needed.
-
-## Docker Desktop Kubernetes Setup
-
-### Enable Kubernetes in Docker Desktop
-
-1. Open Docker Desktop
-2. Go to Settings → Kubernetes
-3. Check "Enable Kubernetes"
-4. Click "Apply & Restart"
-5. Wait for Kubernetes to start (green indicator)
-
-### Verify Setup
-
-```bash
-kubectl config use-context docker-desktop
-kubectl cluster-info
-kubectl get nodes
-```
-
-## Architecture
-
-```
-┌─────────────────┐
-│                 │
-│   ping:8080     │  HTTP GET /
-│                 │
-└────────┬────────┘
-         │
-         │ HTTP GET http://helloworld:5100/helloworld
-         │
-         ▼
-┌─────────────────┐
-│                 │
-│ helloworld:5100 │  Returns "Hello world!"
-│                 │
-└─────────────────┘
-```
-
-## Service Endpoints
-
-- **ping service**: `http://localhost:8080/` - Entry point that calls helloworld
-- **helloworld service**: `http://localhost:5100/helloworld` - Returns "Hello world!"
-
-In Kubernetes:
-- **ping**: `http://ping:8080/` (ClusterIP)
-- **helloworld**: `http://helloworld:5100/helloworld` (ClusterIP)
+- **Plans:** `documentation/Plans/` - Implementation plans and architecture decisions
+- **Fixes:** `documentation/Fixes/` - Solutions to issues encountered during development
 
 ## Notes
 
-- Both services use `imagePullPolicy: Never` in Kubernetes to use local Docker images
-- The services communicate within the Kubernetes cluster using DNS (service names)
-- Port 5100 is used by helloworld (configured in `application.properties`)
-- Port 8080 is used by ping (Spring Boot default)
+- All services use `imagePullPolicy: Never` in Kubernetes to use local Docker images
+- H2 database files are stored in `/data/taskboard` (persisted via PVC in Kubernetes, volume in Docker Compose)
+- Frontend communicates with API using service name `taskboard-api` within the cluster
