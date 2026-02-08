@@ -39,8 +39,8 @@ public class TaskboardApiClient {
                 .block();
     }
 
-    public TaskDto createTask(TaskFormDto form) {
-        return webClient.post()
+    public void createTask(TaskFormDto form) {
+        webClient.post()
                 .uri("/api/tasks")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of(
@@ -49,12 +49,12 @@ public class TaskboardApiClient {
                         "priority", form.getPriority()
                 ))
                 .retrieve()
-                .bodyToMono(TaskDto.class)
+                .toBodilessEntity()
                 .block();
     }
 
-    public TaskDto updateTask(Long id, TaskFormDto form) {
-        return webClient.put()
+    public void updateTask(Long id, TaskFormDto form) {
+        webClient.put()
                 .uri("/api/tasks/{id}", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of(
@@ -64,17 +64,17 @@ public class TaskboardApiClient {
                         "status", form.getStatus()
                 ))
                 .retrieve()
-                .bodyToMono(TaskDto.class)
+                .toBodilessEntity()
                 .block();
     }
 
-    public TaskDto updateTaskStatus(Long id, Status status) {
-        return webClient.patch()
+    public void updateTaskStatus(Long id, Status status) {
+        webClient.patch()
                 .uri("/api/tasks/{id}/status", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("status", status))
                 .retrieve()
-                .bodyToMono(TaskDto.class)
+                .toBodilessEntity()
                 .block();
     }
 

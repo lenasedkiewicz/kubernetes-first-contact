@@ -1,4 +1,4 @@
-package com.lenasedkiewicz.taskboard;
+package com.lenasedkiewicz.tasks;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -8,7 +8,7 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @EmbeddedKafka(partitions = 1, topics = {"task-events"})
 @ActiveProfiles("test")
-class TaskboardApiApplicationTests {
+class TasksServiceApplicationTests {
 
     @Test
     void contextLoads() {

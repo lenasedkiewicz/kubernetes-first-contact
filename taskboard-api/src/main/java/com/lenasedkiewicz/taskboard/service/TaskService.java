@@ -4,80 +4,59 @@ import com.lenasedkiewicz.taskboard.dto.StatusUpdateRequest;
 import com.lenasedkiewicz.taskboard.dto.TaskCreateRequest;
 import com.lenasedkiewicz.taskboard.dto.TaskResponse;
 import com.lenasedkiewicz.taskboard.dto.TaskUpdateRequest;
-import com.lenasedkiewicz.taskboard.entity.Task;
-import com.lenasedkiewicz.taskboard.enums.Status;
-import com.lenasedkiewicz.taskboard.repository.TaskRepository;
+import com.lenasedkiewicz.taskboard.event.TaskEvent;
+import com.lenasedkiewicz.taskboard.event.TaskEventProducer;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
-@Transactional
 public class TaskService {
 
-    private final TaskRepository taskRepository;
+    private final TaskEventProducer eventProducer;
+    private final TasksServiceClient tasksServiceClient;
 
-    public TaskService(TaskRepository taskRepository) {
-        this.taskRepository = taskRepository;
+    public TaskService(TaskEventProducer eventProducer, TasksServiceClient tasksServiceClient) {
+        this.eventProducer = eventProducer;
+        this.tasksServiceClient = tasksServiceClient;
     }
 
     public List<TaskResponse> getAllTasks() {
-        return taskRepository.findAll().stream()
-                .map(TaskResponse::new)
-                .toList();
+        return tasksServiceClient.getAllTasks();
     }
 
-    public TaskResponse getTaskById(Long id) {
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + id));
-        return new TaskResponse(task);
+    public Optional<TaskResponse> getTaskById(Long id) {
+        return tasksServiceClient.getTaskById(id);
     }
 
-    public TaskResponse createTask(TaskCreateRequest request) {
-        Task task = new Task();
-        task.setName(request.getName());
-        task.setDurationMinutes(request.getDurationMinutes());
-        task.setPriority(request.getPriority());
-        task.setStatus(Status.TO_DO);
-
-        Task savedTask = taskRepository.save(task);
-        return new TaskResponse(savedTask);
+    public void createTask(TaskCreateRequest request) {
+        TaskEvent event = TaskEvent.createEvent(
+                request.getName(),
+                request.getDurationMinutes(),
+                request.getPriority()
+        );
+        eventProducer.send(event);
     }
 
-    public TaskResponse updateTask(Long id, TaskUpdateRequest request) {
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + id));
-
-        task.setName(request.getName());
-        task.setDurationMinutes(request.getDurationMinutes());
-        task.setPriority(request.getPriority());
-        task.setStatus(request.getStatus());
-
-        Task updatedTask = taskRepository.save(task);
-        return new TaskResponse(updatedTask);
+    public void updateTask(Long id, TaskUpdateRequest request) {
+        TaskEvent event = TaskEvent.updateEvent(
+                id,
+                request.getName(),
+                request.getDurationMinutes(),
+                request.getPriority(),
+                request.getStatus()
+        );
+        eventProducer.send(event);
     }
 
-    public TaskResponse updateTaskStatus(Long id, StatusUpdateRequest request) {
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + id));
-
-        task.setStatus(request.getStatus());
-
-        Task updatedTask = taskRepository.save(task);
-        return new TaskResponse(updatedTask);
+    public void updateTaskStatus(Long id, StatusUpdateRequest request) {
+        TaskEvent event = TaskEvent.statusUpdateEvent(id, request.getStatus());
+        eventProducer.send(event);
     }
 
     public void deleteTask(Long id) {
-        if (!taskRepository.existsById(id)) {
-            throw new TaskNotFoundException("Task not found with id: " + id);
-        }
-        taskRepository.deleteById(id);
-    }
-
-    public static class TaskNotFoundException extends RuntimeException {
-        public TaskNotFoundException(String message) {
-            super(message);
-        }
+        TaskEvent event = TaskEvent.deleteEvent(id);
+        eventProducer.send(event);
     }
 }

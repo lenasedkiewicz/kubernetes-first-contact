@@ -1,7 +1,9 @@
-package com.lenasedkiewicz.taskboard.dto;
+package com.lenasedkiewicz.tasks.dto;
 
-import com.lenasedkiewicz.taskboard.enums.Priority;
-import com.lenasedkiewicz.taskboard.enums.Status;
+import com.lenasedkiewicz.tasks.entity.Task;
+import com.lenasedkiewicz.tasks.enums.Priority;
+import com.lenasedkiewicz.tasks.enums.Status;
+
 import java.time.LocalDateTime;
 
 public class TaskResponse {
@@ -15,6 +17,16 @@ public class TaskResponse {
     private LocalDateTime updatedAt;
 
     public TaskResponse() {
+    }
+
+    public TaskResponse(Task task) {
+        this.id = task.getId();
+        this.name = task.getName();
+        this.durationMinutes = task.getDurationMinutes();
+        this.priority = task.getPriority();
+        this.status = task.getStatus();
+        this.createdAt = task.getCreatedAt();
+        this.updatedAt = task.getUpdatedAt();
     }
 
     public Long getId() {

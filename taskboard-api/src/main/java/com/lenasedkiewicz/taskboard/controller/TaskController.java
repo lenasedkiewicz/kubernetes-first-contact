@@ -14,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/tasks")
+@CrossOrigin(origins = "*")
 public class TaskController {
 
     private final TaskService taskService;
@@ -23,41 +24,38 @@ public class TaskController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskResponse>> getAllTasks() {
-        return ResponseEntity.ok(taskService.getAllTasks());
+    public List<TaskResponse> getAllTasks() {
+        return taskService.getAllTasks();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<TaskResponse> getTaskById(@PathVariable Long id) {
-        return ResponseEntity.ok(taskService.getTaskById(id));
+        return taskService.getTaskById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<TaskResponse> createTask(@Valid @RequestBody TaskCreateRequest request) {
-        TaskResponse task = taskService.createTask(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(task);
+    public ResponseEntity<Void> createTask(@Valid @RequestBody TaskCreateRequest request) {
+        taskService.createTask(request);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskResponse> updateTask(@PathVariable Long id,
-                                                   @Valid @RequestBody TaskUpdateRequest request) {
-        return ResponseEntity.ok(taskService.updateTask(id, request));
+    public ResponseEntity<Void> updateTask(@PathVariable Long id, @Valid @RequestBody TaskUpdateRequest request) {
+        taskService.updateTask(id, request);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<TaskResponse> updateTaskStatus(@PathVariable Long id,
-                                                         @Valid @RequestBody StatusUpdateRequest request) {
-        return ResponseEntity.ok(taskService.updateTaskStatus(id, request));
+    public ResponseEntity<Void> updateTaskStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateRequest request) {
+        taskService.updateTaskStatus(id, request);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
         taskService.deleteTask(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @ExceptionHandler(TaskService.TaskNotFoundException.class)
-    public ResponseEntity<String> handleTaskNotFound(TaskService.TaskNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 }

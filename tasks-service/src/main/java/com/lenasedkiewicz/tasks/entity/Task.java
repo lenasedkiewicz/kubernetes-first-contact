@@ -1,20 +1,47 @@
-package com.lenasedkiewicz.taskboard.dto;
+package com.lenasedkiewicz.tasks.entity;
 
-import com.lenasedkiewicz.taskboard.enums.Priority;
-import com.lenasedkiewicz.taskboard.enums.Status;
+import com.lenasedkiewicz.tasks.enums.Priority;
+import com.lenasedkiewicz.tasks.enums.Status;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-public class TaskResponse {
+@Entity
+@Table(name = "tasks")
+public class Task {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, length = 255)
     private String name;
+
+    @Column(nullable = false)
     private Integer durationMinutes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Priority priority;
-    private Status status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status = Status.TO_DO;
+
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    public TaskResponse() {
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
     public Long getId() {
