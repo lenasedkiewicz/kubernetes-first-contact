@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskboard-api
+  labels:
+    app: taskboard-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taskboard-api
+  template:
+    metadata:
+      labels:
+        app: taskboard-api
+    spec:
+      containers:
+      - name: taskboard-api
+        image: taskboard-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5100
+        volumeMounts:
+        - name: taskboard-data
+          mountPath: /data
+      volumes:
+      - name: taskboard-data
+        persistentVolumeClaim:
+          claimName: taskboard-pvc
