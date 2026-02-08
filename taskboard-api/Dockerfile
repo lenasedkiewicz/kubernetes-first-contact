@@ -9,8 +9,11 @@ FROM eclipse-temurin:25-jdk
 
 WORKDIR /app
 
-COPY --from=build /app/target/helloworld-0.0.1-SNAPSHOT.jar ./helloworld.jar
+# Create data directory for H2 persistence
+RUN mkdir -p /data
+
+COPY --from=build /app/target/taskboard-api-0.0.1-SNAPSHOT.jar ./taskboard-api.jar
 
 EXPOSE 5100
 
-CMD ["java", "-jar", "helloworld.jar"]
+CMD ["java", "-jar", "taskboard-api.jar"]
