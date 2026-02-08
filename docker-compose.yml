@@ -1,10 +1,25 @@
 services:
-  helloworld:
+  taskboard-api:
     build:
-      context: ./helloworld
+      context: ./taskboard-api
       dockerfile: Dockerfile
     ports:
       - "5100:5100"
+    volumes:
+      - taskboard-data:/data
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - TASKBOARD_API_BASE_URL=http://taskboard-api:5100
+    depends_on:
+      - taskboard-api
     networks:
       - app-network
 
@@ -20,3 +35,6 @@ services:
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  taskboard-data:
