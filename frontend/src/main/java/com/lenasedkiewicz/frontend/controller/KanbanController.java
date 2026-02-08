@@ -6,6 +6,8 @@ import com.lenasedkiewicz.frontend.enums.Priority;
 import com.lenasedkiewicz.frontend.enums.Status;
 import com.lenasedkiewicz.frontend.service.TaskboardApiClient;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -14,10 +16,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
 public class KanbanController {
+
+    private static final Logger logger = LoggerFactory.getLogger(KanbanController.class);
 
     private final TaskboardApiClient apiClient;
 
@@ -53,8 +58,9 @@ public class KanbanController {
 
         try {
             apiClient.createTask(form);
-            redirectAttributes.addFlashAttribute("success", "Task created successfully");
+            redirectAttributes.addFlashAttribute("success", "Task created successfully (processing async - refresh if not visible)");
         } catch (Exception e) {
+            logger.error("Failed to create task: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error", "Failed to create task: " + e.getMessage());
         }
 
@@ -62,22 +68,55 @@ public class KanbanController {
     }
 
     @GetMapping("/tasks/{id}/edit")
-    public String editTaskForm(@PathVariable Long id, Model model) {
-        TaskDto task = apiClient.getTaskById(id);
+    public String editTaskForm(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
+        try {
+            Optional<TaskDto> taskOpt = apiClient.getTaskById(id);
 
-        TaskFormDto form = new TaskFormDto();
-        form.setId(task.getId());
-        form.setName(task.getName());
-        form.setDurationMinutes(task.getDurationMinutes());
-        form.setPriority(task.getPriority());
-        form.setStatus(task.getStatus());
+            if (taskOpt.isEmpty()) {
+                logger.warn("Task with id {} not found - may not have been processed yet (async)", id);
+                redirectAttributes.addFlashAttribute("error",
+                        "Task not found (id=" + id + "). " +
+                        "This may happen if the task was just created and Kafka hasn't processed it yet. " +
+                        "Please wait a moment and refresh the page.");
+                return "redirect:/";
+            }
 
-        model.addAttribute("taskForm", form);
-        model.addAttribute("priorities", Priority.values());
-        model.addAttribute("statuses", Status.values());
-        model.addAttribute("isEdit", true);
+            TaskDto task = taskOpt.get();
+            TaskFormDto form = new TaskFormDto();
+            form.setId(task.getId());
+            form.setName(task.getName());
+            form.setDurationMinutes(task.getDurationMinutes());
+            form.setPriority(task.getPriority());
+            form.setStatus(task.getStatus());
 
-        return "kanban";
+            model.addAttribute("taskForm", form);
+            model.addAttribute("priorities", Priority.values());
+            model.addAttribute("statuses", Status.values());
+            model.addAttribute("isEdit", true);
+
+            // Also load tasks for the board display
+            List<TaskDto> allTasks = apiClient.getAllTasks();
+            Map<Status, List<TaskDto>> tasksByStatus = allTasks.stream()
+                    .collect(Collectors.groupingBy(TaskDto::getStatus));
+            model.addAttribute("todoTasks", tasksByStatus.getOrDefault(Status.TO_DO, List.of()));
+            model.addAttribute("inProgressTasks", tasksByStatus.getOrDefault(Status.IN_PROGRESS, List.of()));
+            model.addAttribute("doneTasks", tasksByStatus.getOrDefault(Status.DONE, List.of()));
+
+            return "kanban";
+
+        } catch (TaskboardApiClient.TaskboardApiException e) {
+            logger.error("API error while fetching task {}: {}", id, e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Error communicating with API: " + e.getMessage() +
+                    ". Check if all services (taskboard-api, tasks-service, kafka) are running.");
+            return "redirect:/";
+        } catch (Exception e) {
+            logger.error("Unexpected error while fetching task {}: {}", id, e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Unexpected error: " + e.getMessage() +
+                    ". Check the logs for more details.");
+            return "redirect:/";
+        }
     }
 
     @PostMapping("/tasks/{id}")
@@ -92,8 +131,9 @@ public class KanbanController {
 
         try {
             apiClient.updateTask(id, form);
-            redirectAttributes.addFlashAttribute("success", "Task updated successfully");
+            redirectAttributes.addFlashAttribute("success", "Task update submitted (processing async)");
         } catch (Exception e) {
+            logger.error("Failed to update task {}: {}", id, e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error", "Failed to update task: " + e.getMessage());
         }
 
@@ -103,13 +143,19 @@ public class KanbanController {
     @PostMapping("/tasks/{id}/move-left")
     public String moveTaskLeft(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
-            TaskDto task = apiClient.getTaskById(id);
-            Status newStatus = getPreviousStatus(task.getStatus());
+            Optional<TaskDto> taskOpt = apiClient.getTaskById(id);
+            if (taskOpt.isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "Task not found (id=" + id + ")");
+                return "redirect:/";
+            }
+
+            Status newStatus = getPreviousStatus(taskOpt.get().getStatus());
             if (newStatus != null) {
                 apiClient.updateTaskStatus(id, newStatus);
-                redirectAttributes.addFlashAttribute("success", "Task moved successfully");
+                redirectAttributes.addFlashAttribute("success", "Task move submitted (processing async)");
             }
         } catch (Exception e) {
+            logger.error("Failed to move task {}: {}", id, e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error", "Failed to move task: " + e.getMessage());
         }
 
@@ -119,13 +165,19 @@ public class KanbanController {
     @PostMapping("/tasks/{id}/move-right")
     public String moveTaskRight(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
-            TaskDto task = apiClient.getTaskById(id);
-            Status newStatus = getNextStatus(task.getStatus());
+            Optional<TaskDto> taskOpt = apiClient.getTaskById(id);
+            if (taskOpt.isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "Task not found (id=" + id + ")");
+                return "redirect:/";
+            }
+
+            Status newStatus = getNextStatus(taskOpt.get().getStatus());
             if (newStatus != null) {
                 apiClient.updateTaskStatus(id, newStatus);
-                redirectAttributes.addFlashAttribute("success", "Task moved successfully");
+                redirectAttributes.addFlashAttribute("success", "Task move submitted (processing async)");
             }
         } catch (Exception e) {
+            logger.error("Failed to move task {}: {}", id, e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error", "Failed to move task: " + e.getMessage());
         }
 
@@ -136,8 +188,9 @@ public class KanbanController {
     public String deleteTask(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
             apiClient.deleteTask(id);
-            redirectAttributes.addFlashAttribute("success", "Task deleted successfully");
+            redirectAttributes.addFlashAttribute("success", "Task delete submitted (processing async)");
         } catch (Exception e) {
+            logger.error("Failed to delete task {}: {}", id, e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error", "Failed to delete task: " + e.getMessage());
         }
 

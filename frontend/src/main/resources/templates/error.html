@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${status} + ' - Error'">Error</title>
+    <link rel="stylesheet" th:href="@{/css/kanban.css}">
+    <style>
+        .error-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .error-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .error-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 30px;
+            color: white;
+        }
+
+        .error-code {
+            font-size: 5rem;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            margin-top: 10px;
+            font-weight: 400;
+            opacity: 0.95;
+        }
+
+        .error-body {
+            padding: 30px;
+        }
+
+        .error-message {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .error-details {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .error-details-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .error-details-content {
+            color: #666;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            word-break: break-word;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .error-actions .btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+        }
+
+        .error-timestamp {
+            color: #999;
+            font-size: 0.8rem;
+            margin-top: 20px;
+        }
+
+        .icon-warning {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 15px;
+        }
+
+        /* Different colors for different error types */
+        .error-header.error-404 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .error-header.error-500 {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .error-header.error-403 {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-header" th:classappend="${status == 404} ? 'error-404' : (${status == 500} ? 'error-500' : '')">
+                <svg class="icon-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p class="error-code" th:text="${status}">404</p>
+                <p class="error-title" th:text="${error}">Not Found</p>
+            </div>
+
+            <div class="error-body">
+                <p class="error-message">
+                    <span th:if="${status == 404}">
+                        The page you're looking for doesn't exist or has been moved.
+                    </span>
+                    <span th:if="${status == 500}">
+                        Something went wrong on our end. Our team has been notified.
+                    </span>
+                    <span th:if="${status == 403}">
+                        You don't have permission to access this resource.
+                    </span>
+                    <span th:if="${status != 404 and status != 500 and status != 403}">
+                        An unexpected error occurred while processing your request.
+                    </span>
+                </p>
+
+                <!-- Debug details - shown only when message is available -->
+                <div class="error-details" th:if="${message != null and message != 'No message available'}">
+                    <div class="error-details-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        Debug Info
+                    </div>
+                    <div class="error-details-content">
+                        <strong>Path:</strong> <span th:text="${path}"></span><br/>
+                        <strong>Message:</strong> <span th:text="${message}"></span><br/>
+                        <span th:if="${trace != null}">
+                            <strong>Exception:</strong> <span th:text="${#strings.abbreviate(trace, 200)}"></span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="error-actions">
+                    <a href="/" class="btn btn-primary">Go to Home</a>
+                    <button onclick="history.back()" class="btn btn-secondary">Go Back</button>
+                </div>
+
+                <p class="error-timestamp">
+                    <span th:text="${#temporals.format(timestamp, 'yyyy-MM-dd HH:mm:ss')}" th:if="${timestamp != null}"></span>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
