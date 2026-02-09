@@ -170,6 +170,14 @@
             var modal = document.getElementById('taskModal');
             if (event.target == modal) closeModal();
         }
+
+        // Single delayed refresh after an async action to pick up Kafka-processed changes
+        var successAlert = document.querySelector('.alert-success');
+        if (successAlert) {
+            setTimeout(function() {
+                window.location.href = '/';
+            }, 1500);
+        }
     </script>
 </body>
 </html>
