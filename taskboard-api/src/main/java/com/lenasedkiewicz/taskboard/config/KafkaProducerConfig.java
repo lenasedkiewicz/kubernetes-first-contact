@@ -1,5 +1,8 @@
 package com.lenasedkiewicz.taskboard.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lenasedkiewicz.taskboard.event.TaskEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -24,9 +27,18 @@ public class KafkaProducerConfig {
     public ProducerFactory<String, TaskEvent> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        return new DefaultKafkaProducerFactory<>(configProps);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        JsonSerializer<TaskEvent> jsonSerializer = new JsonSerializer<>(objectMapper);
+
+        return new DefaultKafkaProducerFactory<>(
+                configProps,
+                new StringSerializer(),
+                jsonSerializer
+        );
     }
 
     @Bean
